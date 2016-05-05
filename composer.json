@@ -1,0 +1,23 @@
+{
+  "name": "demirphp/database",
+  "description": "Veritabanı işlemlerini kolayşaltıran işlevsel bir veritabanı sınıfı",
+  "keywords": ["database", "veritabanı", "database class", "veritabanı sınıfı", "mysql sınıfı", "sqlite sınıfı", "mysql class", "sqlite class"],
+  "homepage": "http://demirphp.com",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Yılmaz Demir",
+      "email": "demiriy@gmail.com",
+      "homepage": "http://yilmazdemir.com.tr"
+    }
+  ],
+  "require": {
+    "php": ">=5.4.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "DemirPHP\\": "src/DemirPHP/"
+    }
+  }
+}
