@@ -136,6 +136,13 @@ $db->table('post')->findAll();
 $db->table('post')->findAll('approved', 'yes');
 // "SELECT * FROM post WHERE approved = 'yes'" sorgusunu çalıştırıp veri döndürecektir
 
+// Birden fazla şart için şöyle kullanılabilir
+$db->table('post')
+	->findAll([
+		'draft' => 0,
+		'approved' => 'yes'
+	]);
+
 // Tüm bunlar $db->table() dışında, $db->selectFrom('table') ve $db->select()->from('table') ile de kullanılabilir.
 ```
 
