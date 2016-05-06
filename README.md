@@ -11,22 +11,21 @@ composer require demirphp/database
 DemirPHP veritabanı sınıfı, SQL kodlarını, PHP metodlarıyla zincirleyerek yaratmanıza ve bunları isterseniz çalıştırmanızı sağlar.
 
 
-* `SELECT` ifadesi
-* `FROM` ifadesi ve tablo seçme
-* Veri döndürme
-* Sorgu dizgesi döndürme
-* Hızlı veri döndürme
-* Parametre ekleme
-* Sorgu dizgesi elde etme
-* `WHERE` ifadeleri
-* `JOIN` ifadeleri
-* `ORDER BY` ifadesi
-* `GROUP BY` ifadesi
-* `HAVING` ifadeleri
-* `LIMIT` ifadesi
-* `INSERT INTO` ifadeleri
-* `UPDATE` ifadesi
-* `DELETE FROM` ifadeleri
+* [`SELECT` ifadesi](#select-ifadesi)
+* [`FROM` ifadesi ve tablo seçme](#from-ifadesi-ve-tablo-se%C3%A7me)
+* [Veri döndürme](#veri-d%C3%B6nd%C3%BCrme)
+* [Sorgu dizgesi döndürme](#sorgu-dizgesi-d%C3%B6nd%C3%BCrme)
+* [Hızlı veri döndürme](#h%C4%B1zl%C4%B1-veri-d%C3%B6nd%C3%BCrme)
+* [Parametre ekleme](#parametre-ekleme)
+* [`WHERE` ifadeleri](#where-ifadeleri)
+* [`JOIN` ifadeleri](#join-ifadeleri)
+* [`ORDER BY` ifadesi](#order-by-ifadesi)
+* [`GROUP BY` ifadesi](#group-by-ifadesi)
+* [`HAVING` ifadeleri](#having-ifadeleri)
+* [`LIMIT` ifadesi](#limit-ifadesi)
+* [`INSERT INTO` ifadeleri](#insert-into-ifadeleri)
+* [`UPDATE` ifadesi](#update-ifadesi)
+* [`DELETE FROM` ifadeleri](#delete-from-ifadeleri)
 
 **Hızlı Örnek**
 ```php
@@ -123,7 +122,7 @@ $db->select()->from('table')->build();
 ```
 
 ## Hızlı Veri Döndürme
-`find()` ve `findAll()`methodları 
+`find()`  ve  `findAll()`methodları 
 ```php
 $db->table('post')->find(15);
 // ID'si 15 olan satırı döndürür
@@ -140,4 +139,155 @@ $db->table('post')->findAll('approved', 'yes');
 // Tüm bunlar $db->table() dışında, $db->selectFrom('table') ve $db->select()->from('table') ile de kullanılabilir.
 ```
 
-Devamı hazırlanacak...
+## Parametre Ekleme
+Parametreler, bir sorgu içerisindeki dizgeyi, belirtilen değişkenle ilişkilendirmeye yarar. PDO'nun bir özelliğidir. Bu özellik, veri döndürmek istediğimizde kendini dayatır.
+
+```php
+$db->selectFrom('table')
+	->where('id', '=', ':id')
+	->bindParam([':id' => 5])
+	->fetch();
+// veya ? işareti kullanabiliriz
+```
+
+## `WHERE` İfadeleri
+`WHERE` ifadesi ile koşullu sorgular oluşturabiliyoruz.
+`where()` `orWhere()` `andWhere()` `whereIn()`
+
+```php
+$db->selectFrom('table')
+	->where('type', '=', 'post')
+	->andWhere('approved', '=', 'yes')
+	->build();
+// "SELECT * FROM table WHERE type = 'post' AND approved = 'yes'" ifadesini döndürür
+
+$db->selectFrom('table')
+	->where('draft', '=', 1)
+	->orWhere('type', '=', 'page')
+	->build();
+// .. WHERE .. OR .. ifadesi döndürür
+
+$db->selectFrom('table')
+	->whereIn('id', [1, 2, 3, 4])
+	->build();
+// "SELECT * FROM table WHERE id IN (1, 2, 3, 4)" ifadesi döner, parametre kullanılabilir
+```
+
+## `JOIN` İfadeleri
+Bir sorguda iki tablodan veri elde etmek için kullanılır.
+`join()` `innerJoin()` `leftJoin()` `rightJoin()` `fullJoin()`
+
+```php
+$db->select('post.*', 'category.name AS cat_name', 'category.id AS cat_id')
+	->from('post')
+	->join('category', 'post.category_id', '=', 'category.id')
+	->rightJoin('')
+	->build();
+
+// "SELECT post.*, category.name AS cat_name, category.id AS cat_id FROM post INNER JOIN category ON post.category_id = category.id" döndürür
+// veya
+$db->select()
+	->from('post AS p')
+	->rightJoin('category AS c', 'c.id', '=', 'p.cid')
+	->build();
+```
+
+`join()` methodu `innerJoin()` methoduna denktir.
+
+## `ORDER BY` İfadesi
+Sıralamayı ayarlar
+
+```php
+$db->selectFrom('table')->orderBy('created')->build();
+// SELECT * FROM table ORDER BY created DESC
+// ikinci parametre türü belirler
+$db->selectFrom('table')->orderBy('id', 'ASC')->build();
+```
+
+## `GROUP BY` İfadesi
+```php
+$db->selectFrom('table')
+	->join(...)
+	->groupBy('table.groupID')
+	->build();
+```
+
+## `HAVING` İfadeleri
+`having()` `orHaving()` `andHaving()` 
+```php
+$db->selectFrom('post')
+	->having('approved', '=', 'yes')
+	->orHaving(...)
+	->andHaving(...)
+	->build();
+```
+
+## `LIMIT` İfadesi
+```php
+$db->selectFrom('post')
+	->limit(10)
+	->build();
+// ikinci parametre OFFSET değeri alır
+$db->selectFrom('post')
+	->limit(10, 20)
+	->build();
+// "SELECT * FROM post LIMIT 10 OFFSET 20" döndürür
+```
+
+## `INSERT INTO` İfadeleri
+Veri eklemek için iki yol var.
+`insert()` ve `insertInto()` aynı işlevi yapar.
+
+```php
+$post = [
+	'title' => 'Başlık',
+	'body' => 'İçerik',
+	'created' => '2016-05-01'
+];
+
+$db->insertInto('post', $post)->execute();
+// veya $db->insert(...);
+// execute() methodu hazırlanan veriyi ekler
+
+$db->insert('post')
+	->set('title', 'Başlık')
+	->set('body', 'İçerik')
+	->set('created', '2016-05-01')
+	->execute();
+
+// veya
+
+$db->insert('post')->set($post)->execute();
+```
+
+Sorguyu çalıştırdıktan sonra, son eklenen verinin ID'sini şöyle alabiliriz
+
+```php
+$id = $db->lastInsertId();
+```
+
+## `UPDATE` İfadesi
+```php
+$post = [
+	'title' => 'Başlık',
+	'body' => 'İçerik',
+	'created' => '2016-05-01'
+];
+
+$db->update('post')
+	->set($post)
+	->where('id', '=', 5)
+	->execute();
+// ya da
+$db->update('post', $post)
+	->where('postID', '=', 8)
+	->execute();
+```
+
+## `DELETE FROM` İfadesi
+```php
+// $db->delete(...) veya
+$db->deleteFrom('post')
+	->where('id', '=', 5)
+	->execute();
+```
