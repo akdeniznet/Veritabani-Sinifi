@@ -600,6 +600,8 @@ class Database
 			return true;
 		} elseif ($sth == '?') {
 			return true;
+		} elseif (substr($sth, -1) == ')' && strpos($sth, '(') !== false) {
+			return true;
 		} else {
 			return false;
 		}
@@ -641,11 +643,11 @@ class Database
 	public function bindParam($key, $value = null)
 	{
 		if (is_array($key)) {
-			foreach ($key as $key => $value) {
-				$this->query['params'][$key] = $value;
+			foreach ($key as $k => $v) {
+				$this->query['params'] = array_merge($this->query['params'], [$k => $v]);
 			}
 		} else {
-			$this->query['params'] = $arr;
+			$this->query['params'] = array_merge($this->query['params'], [$key => $value])
 		}
 		return $this;
 	}
@@ -695,8 +697,8 @@ class Database
 					$this->query['join_string'],
 					$this->query['where_string'],
 					$this->query['having_string'],
-					$this->query['orderBy'],
 					$this->query['groupBy'],
+					$this->query['orderBy'],
 					$this->query['limit']
 				);
 				break;
