@@ -647,7 +647,7 @@ class Database
 				$this->query['params'] = array_merge($this->query['params'], [$k => $v]);
 			}
 		} else {
-			$this->query['params'] = array_merge($this->query['params'], [$key => $value])
+			$this->query['params'] = array_merge($this->query['params'], [$key => $value]);
 		}
 		return $this;
 	}
