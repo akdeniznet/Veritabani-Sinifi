@@ -524,59 +524,59 @@ class Database
 		}
 		return $this;
 	}
+	
+	public function query($query = null, array $params = [])
+	{
+		$params = empty($params) ? $this->query['params'] : $params;
+		$query = $query === null ? $this->build() : $query;
+		$stmt = $this->db->prepare($query);
+		$stmt->execute($params);
+		return $stmt;
+	}
 
 	/**
 	 * PDO ile veri döndürür
 	 * @return mixed|void
 	 */
-	public function fetch($type = null)
+	public function fetch()
 	{
-		$params = $this->query['params'];
-		$query = $this->build();
-
-		if (!is_null($query)) {
-			$sth = $this->db->prepare($query);
-			$sth->execute($params);
-			return $sth->fetch($type);
-		} else {
-			return;
-		}
+		return $this->query()->fetch();
 	}
 
 	/**
 	 * PDO ile sütun döndürür
 	 * @return mixed|void
 	 */
-	public function fetchColumn($type = null)
+	public function fetchColumn()
 	{
-		$params = $this->query['params'];
-		$query = $this->build();
-
-		if (!is_null($query)) {
-			$sth = $this->db->prepare($query);
-			$sth->execute($params);
-			return $sth->fetchColumn($type);
-		} else {
-			return;
-		}
+		return $this->query()->fetchColumn();
 	}
 
 	/**
 	 * PDO ile veriler döndürür
 	 * @return array|void
 	 */
-	public function fetchAll($type = null)
+	public function fetchAll()
 	{
-		$params = $this->query['params'];
-		$query = $this->build();
+		return $this->query()->fetchAll();
+	}
 
-		if (!is_null($query)) {
-			$sth = $this->db->prepare($query);
-			$sth->execute($params);
-			return $sth->fetchAll($type);
-		} else {
-			return;
-		}
+	/**
+	 * PDO ile satır sayısını verir
+	 * @return int|void
+	 */
+	public function rowCount()
+	{
+		return $this->query()->rowCount();
+	}
+
+	/**
+	 * Veritabanında son eklenen satır ID'sini döndürür
+	 * @return int
+	 */
+	public function lastInsertId()
+	{
+		return $this->db->lastInsertId();
 	}
 
 	/**
@@ -620,33 +620,6 @@ class Database
 			}
 		}
 		return $this->fetchAll();
-	}
-
-	/**
-	 * Veritabanında son eklenen satır ID'sini döndürür
-	 * @return int
-	 */
-	public function lastInsertId()
-	{
-		return $this->db->lastInsertId();
-	}
-
-	/**
-	 * PDO ile satır sayısını verir
-	 * @return int|void
-	 */
-	public function rowCount()
-	{
-		$params = $this->query['params'];
-		$query = $this->build();
-
-		if (!is_null($query)) {
-			$sth = $this->db->prepare($query);
-			$sth->execute($params);
-			return $sth->rowCount();
-		} else {
-			return;
-		}
 	}
 
 	/**
