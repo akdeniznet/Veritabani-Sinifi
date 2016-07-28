@@ -716,17 +716,23 @@ class Database
 	 * Sorguyu çalıştırır
 	 * @return bool|void
 	 */
-	public function execute()
+	public function execute($q = null, array $p = [])
 	{
-		$params = $this->query['params'];
-		$query = $this->build();
-
-		if (!is_null($query)) {
-			$sth = $this->db->prepare($query);
-			return $sth->execute($params);
+		if ($q === null) {
+			$params = $this->query['params'];
+			$query = $this->build();
+	
+			if (!is_null($query)) {
+				$sth = $this->db->prepare($query);
+				return $sth->execute($params);
+			} else {
+				return false;
+			}
 		} else {
-			return;
+			$sth = $this->db->prepare($q);
+			return $sth->execute($p);
 		}
+
 	}
 
 	/**
