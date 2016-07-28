@@ -171,6 +171,66 @@ class Database
 	}
 
 	/**
+	 * AND WHERE IN() ifadesi hazırlar
+	 * @param $col
+	 * @param $data
+	 * @return Database
+	 */
+	public function andWhereIn($col, $data)
+	{
+		return $this->whereIn("AND {$col}", $data);
+	}
+
+	/**
+	 * OR WHERE IN() ifadesi hazırlar
+	 * @param $col
+	 * @param $data
+	 * @return Database
+	 */
+	public function orWhereIn($col, $data)
+	{
+		return $this->whereIn("OR {$col}", $data);
+	}
+
+	/**
+	 * WHERE column BETWEEN val1 AND val2 ifadesi hazırlar
+	 * @param $col string
+	 * @param $val1 string
+	 * @param $val2 string
+	 * @return Database
+	 */
+	public function whereBetween($col, $val1, $val2)
+	{
+		$val1 = is_numeric($val1) ||$this->isPrepared($val1) ? $val1 : "'{$val1}'";
+		$val2 = is_numeric($val2) ||$this->isPrepared($val2) ? $val2 : "'{$val2}'";
+		return $this->addWhere($col, 'BETWEEN', "{$val1} AND {$val2}");
+	}
+
+	/**
+	 * AND WHERE column BETWEEN val1 AND val2 ifadesi hazırlar
+	 * @param $col string
+	 * @param $val1 string
+	 * @param $val2 string
+	 * @return Database
+	 */
+	public function andWhereBetween($col, $val1, $val2)
+	{
+		return $this->whereBetween("AND {$col}", $val1, $val2);
+	}
+
+	/**
+	 * OR WHERE column BETWEEN val1 AND val2 ifadesi hazırlar
+	 * @param $col string
+	 * @param $val1 string
+	 * @param $val2 string
+	 * @return Database
+	 */
+	public function orWhereBetween($col, $val1, $val2)
+	{
+		return $this->whereBetween("OR {$col}", $val1, $val2);
+	}
+
+	/**
 	 * Alınan WHERE ifadelerini dizgeye dönüştürür
 	 */
 	private function buildWhere()
