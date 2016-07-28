@@ -68,6 +68,8 @@ $db->select('id', 'title', 'body AS govde')->build();
 // Daha hızlı biçimde, şöyle de kullanılabilir:
 $db->selectFrom('table')->build();
 // "SELECT * FROM table" döner
+// veya şu da aynı sonucu döndürür:
+$db->table('table')->build();
 ```
 
 ## `FROM` ifadesi ve tablo seçme
@@ -113,6 +115,14 @@ $db->select('count(id)')
 $db->select()->from('post')->rowCount();
 // İlk kullanılan rowCount'a göre daha hızlıdır
 ```
+veri döndürmenin daha birçok farklı yolu mevcut. Şöyle mesela;
+```php
+$db->query('SELECT * FROM table')->fetchAll();
+// veya
+$db->table('table')->query()->fetchAll();
+$db->table('table')->fetchAll();
+```
+`query()` metodu, PDO nesnesi döndürdüğünden, başka biçimlerde de kullanabilirsiniz. 
 
 ## Sorgu Dizgesi Döndürme
 `build()` methodu ile sorgu dizgesi oluşturabiliyoruz
@@ -156,10 +166,14 @@ $db->selectFrom('table')
 	->fetch();
 // veya ? işareti kullanabiliriz
 ```
+Parametreler birden fazla `bindParam` metodu çalıştırılarak eklenebilir, önceki eklenenlerin üzerine eklenmez.
 
 ## `WHERE` İfadeleri
 `WHERE` ifadesi ile koşullu sorgular oluşturabiliyoruz.
-`where()` `orWhere()` `andWhere()` `whereIn()`
+
+`where()` `orWhere()` `andWhere()` 
+`whereIn()` `orWhereIn()` `andWhereIn()`
+`whereBetween()` `orWhereBetween()` `andWhereBetween()`
 
 ```php
 $db->selectFrom('table')
@@ -178,6 +192,11 @@ $db->selectFrom('table')
 	->whereIn('id', [1, 2, 3, 4])
 	->build();
 // "SELECT * FROM table WHERE id IN (1, 2, 3, 4)" ifadesi döner, parametre kullanılabilir
+
+$db->table('post')
+	->whereBetween('created', '2016-07-15', '2016-07-18')
+	->build();
+// "SELECT * FROM post WHERE created BETWEEN 2016-07-15 AND 2016-07-18" ifadesi döner, parametre kullanılabilir
 ```
 
 ## `JOIN` İfadeleri
@@ -209,6 +228,10 @@ $db->selectFrom('table')->orderBy('created')->build();
 // SELECT * FROM table ORDER BY created DESC
 // ikinci parametre türü belirler
 $db->selectFrom('table')->orderBy('id', 'ASC')->build();
+```
+Birden fazla sütun için şöyle geçici bir yöntem yaptım, ileride metodu daha kullanışlı hale getirmeyi planlıyorum:
+```php
+$db->table('post')->orderBy('date', 'ASC, draft DESC');
 ```
 
 ## `GROUP BY` İfadesi
