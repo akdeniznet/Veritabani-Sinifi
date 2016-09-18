@@ -2,809 +2,450 @@
 
 namespace DemirPHP;
 
-/**
- * Veritabanı Sınıfı
- * Veritabanı işlemlerinizi kolaylaştırır
- * @author Yılmaz Demir <demiriy@gmail.com>
- * @link http://demirphp.com
- * @package DemirPHP\Database
- * @version 0.9
- */
-
 class Database
 {
 	/**
-	 * Veritabanı nesnesini tutar
-	 * @var PDO
-	 */
-	public $db;
-
-	/**
-	 * Sorgu değerlerini tutar
 	 * @var array
+	 * Sorgu ifadelerini tutar
 	 */
-	public $query = [
+	private static $stmt = [
 		'select' => null,
 		'from' => null,
-		'where' => [],
-		'where_string' => null,
-		'join' => [],
-		'join_string' => null,
+		'where' => null,
+		'whereArr' => [],
+		'having' => null,
+		'havingArr' => [],
+		'join' => null,
+		'joinArr' => [],
 		'orderBy' => null,
 		'groupBy' => null,
-		'having' => [],
-		'having_string' => null,
-		'table' => null,
-		'query' => null,
-		'old_query' => null,
 		'limit' => null,
+		'table' => null,
+		'type' => 'SELECT',
 		'params' => [],
-		'data' => [],
-		'type' => 'SELECT'
+		'query' => null
 	];
 
 	/**
-	 * Database başlatıcı
-	 * @param PDO $db
+	 * @var \PDO
 	 */
-	public function __construct($db)
+	private static $pdo;
+
+	/**
+	 * PDO objesini alır
+	 * @param void $pdo
+	 * @return void
+	 */
+	public static function init(\PDO $pdo)
 	{
-		$this->db = $db;
+		return self::$pdo = $pdo;
 	}
 
 	/**
-	 * SELECT ifadesi hazırlar
-	 * @return $this
+	 * @param string $select
+	 * @return void
 	 */
-	public function select()
+	public static function select($select = '*')
 	{
-		$cols = func_get_args();
-		$cols = implode(', ', $cols);
-		$cols = empty($cols) ? '*' : $cols;
-		$this->query['type'] = 'SELECT';
-		$this->query['select'] = "SELECT {$cols}";
-		return $this;
+		self::$stmt['select'] = "SELECT {$select}";
+		return new self;
 	}
 
 	/**
-	 * SELECT FROM ifadesi hazırlar
-	 * @return $this
+	 * @param string $from
+	 * @return void
 	 */
-	public function selectFrom($table)
+	public static function from($from)
 	{
-		$this->query['select'] = 'SELECT *';
-		$this->query['from'] = "FROM {$table}";
-		$this->query['table'] = $table;
-		return $this;
+		self::$stmt['from'] = "FROM {$from}";
+		self::$stmt['table'] = $from;
+		return new self;
 	}
 
 	/**
-	 * SELECT FROM ifadesi hazırlar
-	 * @return $this
+	 * @param string $from
+	 * @return void
 	 */
-	public function table($table)
+	public static function table($from)
 	{
-		return $this->selectFrom($table);
+		return self::select()->from($from);
 	}
 
 	/**
-	 * FROM ifadesi hazırlar
-	 * @param $table
-	 * @return $this
+	 * @param string $where
+	 * @return void
 	 */
-	public function from($table)
+	public static function where($where)
 	{
-		$this->query['from'] = "FROM {$table}";
-		$this->query['table'] = $table;
-		return $this;
+		self::$stmt['whereArr'][] = $where;
+		self::buildWhere();
+		return new self;
 	}
 
 	/**
-	 * Diziye WHERE ifadesi ekler
-	 * @param $col
-	 * @param $operator
-	 * @param $value
-	 * @return $this
+	 * WHERE ifadesi oluşturur
 	 */
-	private function addWhere($col, $operator, $value)
+	private static function buildWhere()
 	{
-		$this->query['where'][] = [$col, $operator, $value];
-		$this->buildWhere();
-		return $this;
-	}
-
-	/**
-	 * WHERE ifadesi hazırlar
-	 * @param $col
-	 * @param $operator
-	 * @param $value
-	 * @return Database
-	 */
-	public function where($col, $operator, $value)
-	{
-		return $this->addWhere($col, $operator,$value);
-	}
-
-	/**
-	 * OR WHERE ifadesi hazırlar
-	 * @param $col
-	 * @param $operator
-	 * @param $value
-	 * @return Database
-	 */
-	public function orWhere($col, $operator, $value)
-	{
-		return $this->addWhere("OR {$col}", $operator, $value);
-	}
-
-	/**
-	 * AND WHERE ifadesi hazırlar
-	 * @param $col
-	 * @param $operator
-	 * @param $value
-	 * @return Database
-	 */
-	public function andWhere($col, $operator, $value)
-	{
-		return $this->addWhere("AND {$col}", $operator, $value);
-	}
-
-	/**
-	 * WHERE IN() ifadesi hazırlar
-	 * @param $col
-	 * @param $data
-	 * @return Database
-	 */
-	public function whereIn($col, $data)
-	{
-		$in = '(';
-		foreach ($data as $key => $value) {
-			if (is_numeric($value) || $this->isPrepared($value)) {
-				$in .= "{$value}, ";
-			} else {
-				$in .= "'{$value}', ";
+		$string = 'WHERE ';
+		if (isset(self::$stmt['whereArr']) && is_array(self::$stmt['whereArr'])) {
+			foreach (self::$stmt['whereArr'] as $key => $value) {
+				$string .= "{$value} ";
 			}
 		}
-		$in = rtrim($in, ', ');
-		$in .= ')';
-		return $this->addWhere($col, 'IN', $in);
+		self::$stmt['where'] = trim($string);
 	}
 
 	/**
-	 * AND WHERE IN() ifadesi hazırlar
-	 * @param $col
-	 * @param $data
-	 * @return Database
+	 * @param array $arr
+	 * @return string
 	 */
-	public function andWhereIn($col, $data)
+	public static function in(array $arr)
 	{
-		return $this->whereIn("AND {$col}", $data);
+		$string = null;
+		foreach ($arr as $key => $data) {
+			$string .= self::hasMark($data) ? "{$data}, " : "'{$data}', ";
+		}
+		return ' IN ('.trim(trim($string), ',').')';
 	}
 
 	/**
-	 * OR WHERE IN() ifadesi hazırlar
-	 * @param $col
-	 * @param $data
-	 * @return Database
+	 * @param mixed $val1
+	 * @param mixed $val2
+	 * @return string
 	 */
-	public function orWhereIn($col, $data)
+	public static function between($val1, $val2)
 	{
-		return $this->whereIn("OR {$col}", $data);
+		return ' BETWEEN ' .
+			(self::hasMark($val1) ? "{$val1}" : "'{$val1}'") .
+			' AND ' .
+			(self::hasMark($val2) ? "{$val2}" : "'{$val2}'");
 	}
 
 	/**
-	 * WHERE column BETWEEN val1 AND val2 ifadesi hazırlar
-	 * @param $col string
-	 * @param $val1 string
-	 * @param $val2 string
-	 * @return Database
+	 * @param string $having
+	 * @return void
 	 */
-	public function whereBetween($col, $val1, $val2)
+	public static function having($having)
 	{
-		$val1 = is_numeric($val1) ||$this->isPrepared($val1) ? $val1 : "'{$val1}'";
-		$val2 = is_numeric($val2) ||$this->isPrepared($val2) ? $val2 : "'{$val2}'";
-		return $this->addWhere($col, 'BETWEEN', "{$val1} AND {$val2}");
+		self::$stmt['havingArr'][] = $having;
+		self::buildHaving();
+		return new self;
 	}
 
 	/**
-	 * AND WHERE column BETWEEN val1 AND val2 ifadesi hazırlar
-	 * @param $col string
-	 * @param $val1 string
-	 * @param $val2 string
-	 * @return Database
+	 * HAVING ifadesi oluşturur
 	 */
-	public function andWhereBetween($col, $val1, $val2)
+	private static function buildHaving()
 	{
-		return $this->whereBetween("AND {$col}", $val1, $val2);
-	}
-
-	/**
-	 * OR WHERE column BETWEEN val1 AND val2 ifadesi hazırlar
-	 * @param $col string
-	 * @param $val1 string
-	 * @param $val2 string
-	 * @return Database
-	 */
-	public function orWhereBetween($col, $val1, $val2)
-	{
-		return $this->whereBetween("OR {$col}", $val1, $val2);
-	}
-
-	/**
-	 * Alınan WHERE ifadelerini dizgeye dönüştürür
-	 */
-	private function buildWhere()
-	{
-		$str = 'WHERE ';
-		foreach ($this->query['where'] as $key => $where) {
-			if (is_numeric($where[2]) ||$this->isPrepared($where[2])) {
-				$str .= "{$where[0]} {$where[1]} {$where[2]} ";
-			} else {
-				if ($where[1] == 'IN') {
-					$str .= "{$where[0]} {$where[1]} {$where[2]} ";
-				} else {
-					$str .= "{$where[0]} {$where[1]} '{$where[2]}' ";
-				}
+		$string = 'HAVING ';
+		if (isset(self::$stmt['havingArr']) && is_array(self::$stmt['havingArr'])) {
+			foreach (self::$stmt['havingArr'] as $key => $value) {
+				$string .= "{$value} ";
 			}
 		}
-		$this->query['where_string'] = $str;
+		self::$stmt['having'] = trim($string);
 	}
 
 	/**
-	 * Dizeye JOIN ifadesi ekler
-	 * @param $type
-	 * @param $table
-	 * @param $col1
-	 * @param $operator
-	 * @param $col2
-	 * @return $this
+	 * @param string $join
+	 * @return void
 	 */
-	private function addJoin($type, $table, $col1, $operator, $col2)
+	public static function join($join, $type = 'INNER')
 	{
-		$this->query['join'][] = [$type, $table, $col1, $operator, $col2];
-		$this->buildJoin();
-		return $this;
+		self::$stmt['joinArr'][] = $type . ' JOIN ' . $join;
+		self::buildJoin();
+		return new self;
 	}
 
 	/**
-	 * JOIN ifadesi hazırlar
-	 * @param $table
-	 * @param $col1
-	 * @param $operator
-	 * @param $col2
-	 * @return Database
+	 * JOIN ifadesi oluşturur
 	 */
-	public function join($table, $col1, $operator, $col2)
+	private static function buildJoin()
 	{
-		return $this->addJoin('INNER', $table, $col1, $operator, $col2);
-	}
-
-	/**
-	 * INNER JOIN ifadesi hazırlar
-	 * @param $table
-	 * @param $col1
-	 * @param $operator
-	 * @param $col2
-	 * @return Database
-	 */
-	public function innerJoin($table, $col1, $operator, $col2)
-	{
-		return $this->addJoin('INNER', $table, $col1, $operator, $col2);
-	}
-
-	/**
-	 * LEFT JOIN ifadesi hazırlar
-	 * @param $table
-	 * @param $col1
-	 * @param $operator
-	 * @param $col2
-	 * @return Database
-	 */
-	public function leftJoin($table, $col1, $operator, $col2)
-	{
-		return $this->addJoin('LEFT', $table, $col1, $operator, $col2);
-	}
-
-	/**
-	 * RIGHT JOIN ifadesi hazırlar
-	 * @param $table
-	 * @param $col1
-	 * @param $operator
-	 * @param $col2
-	 * @return Database
-	 */
-	public function rightJoin($table, $col1, $operator, $col2)
-	{
-		return $this->addJoin('RIGHT', $table, $col1, $operator, $col2);
-	}
-
-	/**
-	 * FULL JOIN ifadesi hazırlar
-	 * @param $table
-	 * @param $col1
-	 * @param $operator
-	 * @param $col2
-	 * @return Database
-	 */
-	public function fullJoin($table, $col1, $operator, $col2)
-	{
-		return $this->addJoin('FULL', $table, $col1, $operator, $col2);
-	}
-
-	/**
-	 * Alınan JOIN ifadelerini dizgeye dönüştürülür
-	 */
-	private function buildJoin()
-	{
-		$str = null;
-		foreach ($this->query['join'] as $key => $join) {
-			$str .= "{$join[0]} JOIN {$join[1]} ON ({$join[2]} {$join[3]} {$join[4]}) ";
-		}
-		$this->query['join_string'] = $str;
-	}
-
-	/**
-	 * ORDER BY ifadesi hazırlar
-	 * @param $col
-	 * @param string $type
-	 * @return $this
-	 */
-	public function orderBy($col, $type = 'DESC')
-	{
-		$this->query['orderBy'] = "ORDER BY {$col} {$type}";
-		return $this;
-	}
-
-	/**
-	 * GROUP BY ifadesi hazırlar
-	 * @param $col
-	 * @return $this
-	 */
-	public function groupBy($col)
-	{
-		$this->query['groupBy'] = "GROUP BY {$col}";
-		return $this;
-	}
-
-	/**
-	 * Dizeye HAVING ifadesi hazırlar
-	 * @param $col
-	 * @param $operator
-	 * @param $value
-	 * @return $this
-	 */
-	private function addHaving($col, $operator, $value)
-	{
-		$this->query['having'][] = [$col, $operator, $value];
-		$this->buildHaving();
-		return $this;
-	}
-
-	/**
-	 * HAVING ifadesi hazırlar
-	 * @param $col
-	 * @param $operator
-	 * @param $value
-	 * @return $this|Database
-	 */
-	public function having($col, $operator, $value)
-	{
-		return $this->addHaving($col, $operator, $value);
-		return $this;
-	}
-
-	/**
-	 * OR HAVING ifadesi hazırlar
-	 * @param $col
-	 * @param $operator
-	 * @param $value
-	 * @return Database
-	 */
-	public function orHaving($col, $operator, $value)
-	{
-		return $this->addHaving("OR {$col}", $operator, $value);
-	}
-
-	/**
-	 * AND HAVING ifadesi hazırlar
-	 * @param $col
-	 * @param $operator
-	 * @param $value
-	 * @return Database
-	 */
-	public function andHaving($col, $operator, $value)
-	{
-		return $this->addHaving("AND {$col}", $operator, $value);
-	}
-
-	/**
-	 * Dizedeki HAVING ifadelerini dizgeye dönüştürür
-	 */
-	private function buildHaving()
-	{
-		$str = 'HAVING ';
-		foreach ($this->query['having'] as $key => $having) {
-			if (is_numeric($having[2]) ||$this->isPrepared($having[2])) {
-				$str .= "{$having[0]} {$having[1]} {$having[2]} ";
-			} else {
-				$str .= "{$having[0]} {$having[1]} '{$having[2]}' ";
+		$string = null;
+		if (isset(self::$stmt['joinArr']) && is_array(self::$stmt['joinArr'])) {
+			foreach (self::$stmt['joinArr'] as $key => $value) {
+				$string .= "{$value} ";
 			}
 		}
-		$this->query['having_string'] = $str;
+		self::$stmt['join'] = trim($string);
 	}
 
 	/**
-	 * LIMIT ifadesi hazırlar
-	 * @param $limit
-	 * @param null $offset
-	 * @return $this
+	 * @param string $orderBy
+	 * @return void
 	 */
-	public function limit($limit, $offset = null)
+	public static function orderBy($orderBy)
 	{
-		$this->query['limit'] = is_null($offset) ?
-			"LIMIT {$limit}" : "LIMIT {$limit} OFFSET {$offset}";
-		return $this;
+		self::$stmt['orderBy'] = "ORDER BY {$orderBy}";
+		return new self;
 	}
 
 	/**
-	 * INSERT INTO ifadesi hazırlar
-	 * @param $table
-	 * @param array $data
-	 * @return $this
+	 * @param string $groupBy
+	 * @return void
 	 */
-	public function insertInto($table, array $data = [])
+	public static function groupBy($groupBy)
 	{
-		$this->query['type'] = 'INSERT';
-		$this->query['table'] = $table;
-		$this->query['data'] = $data;
-		return $this;
+		self::$stmt['groupBy'] = "GROUP BY {$groupBy}";
+		return new self;
 	}
 
 	/**
-	 * INSERT INTO ifadesi hazırlar
-	 * @param $table
-	 * @param array $data
-	 * @return Database
+	 * @param string $limit
+	 * @return void
 	 */
-	public function insert($table, array $data = [])
+	public static function limit($limit)
 	{
-		return $this->insertInto($table, $data);
+		self::$stmt['limit'] = "LIMIT $limit";
+		return new self;
 	}
 
 	/**
-	 * UPDATE ifadesi hazırlar
-	 * @param $table
-	 * @param array $data
-	 * @return $this
+	 * @param string|array $name
+	 * @param string|null $value
+	 * @return void
 	 */
-	public function update($table, array $data = [])
+	public static function param($name, $value = null)
 	{
-		$this->query['type'] = 'UPDATE';
-		$this->query['table'] = $table;
-		$this->query['data'] = $data;
-		return $this;
-	}
-
-	/**
-	 * DELETE FROM ifadesi hazırlar
-	 * @param $table
-	 * @return $this
-	 */
-	public function deleteFrom($table)
-	{
-		$this->query['type'] = 'DELETE';
-		$this->query['table'] = $table;
-		return $this;
-	}
-
-	/**
-	 * DELETE FROM ifadesi hazırlar
-	 * @param $table
-	 * @return Database
-	 */
-	public function delete($table)
-	{
-		return $this->deleteFrom($table);
-	}
-
-	/**
-	 * INSERT ve UPDATE için Anahtar/değer tanımlar
-	 * @param $key
-	 * @param null $value
-	 * @return $this
-	 */
-	public function set($key, $value = null)
-	{
-		if (is_array($key)) {
-			foreach ($key as $key => $value) {
-				$this->query['data'][$key] = $value;
+		if (is_array($name)) {
+			foreach ($name as $k => $v) {
+				self::$stmt['params'] = array_merge(self::$stmt['params'], [$k => $v]);
 			}
 		} else {
-			$this->query['data'][$key] = $value;
+			self::$stmt['params'] = array_merge(self::$stmt['params'], [$name => $value]);
 		}
-		return $this;
-	}
-	
-	public function query($query = null, array $params = [])
-	{
-		$params = empty($params) ? $this->query['params'] : $params;
-		$query = $query === null ? $this->build() : $query;
-		$stmt = $this->db->prepare($query);
-		$stmt->execute($params);
-		return $stmt;
+		return new self;
 	}
 
 	/**
-	 * PDO ile veri döndürür
-	 * @return mixed|void
+	 * @param string|array $name
+	 * @param string|null $value
+	 * @return void
 	 */
-	public function fetch()
+	public static function bindParam($name, $value = null)
 	{
-		return $this->query()->fetch();
+		return self::param($name, $value);
 	}
 
 	/**
-	 * PDO ile sütun döndürür
-	 * @return mixed|void
+	 * @param array $data
+	 * @return void
 	 */
-	public function fetchColumn()
+	public static function insert(array $data)
 	{
-		return $this->query()->fetchColumn();
+		self::$stmt['dataArr'] = $data;
+		self::$stmt['type'] = 'INSERT';
+		return new self;
 	}
 
 	/**
-	 * PDO ile veriler döndürür
-	 * @return array|void
+	 * @param array $data
+	 * @return void
 	 */
-	public function fetchAll()
+	public static function update(array $data)
 	{
-		return $this->query()->fetchAll();
+		self::$stmt['dataArr'] = $data;
+		self::$stmt['type'] = 'UPDATE';
+		return new self;
 	}
 
 	/**
-	 * PDO ile satır sayısını verir
-	 * @return int|void
+	 * @return void
 	 */
-	public function rowCount()
+	public static function delete()
 	{
-		return $this->query()->rowCount();
+		self::$stmt['type'] = 'DELETE';
+		return new self;
 	}
 
 	/**
-	 * Veritabanında son eklenen satır ID'sini döndürür
-	 * @return int
+	 * @param string|null $query
+	 * @return void
 	 */
-	public function lastInsertId()
+	public static function build()
 	{
-		return $this->db->lastInsertId();
+		$q = null;
+		switch(self::$stmt['type']) {
+			// SELECT ifadesi hazırlar
+			case 'SELECT':
+				$q = sprintf("%s %s %s %s %s %s %s %s",
+					self::$stmt['select'],
+					self::$stmt['from'],
+					self::$stmt['join'],
+					self::$stmt['where'],
+					self::$stmt['having'],
+					self::$stmt['groupBy'],
+					self::$stmt['orderBy'],
+					self::$stmt['limit']
+				);
+				self::clear();
+				break;
+
+			// INSERT ifadesi hazırlar
+			case 'INSERT':
+				$keys = implode(', ', array_keys(self::$stmt['dataArr']));
+				$vals = null;
+				foreach (array_values(self::$stmt['dataArr']) as $val) {
+					$vals .= self::hasMark($val) ? "$val, " : "'$val', ";
+				}
+				$vals = trim(trim($vals), ',');
+				$q = sprintf('INSERT INTO %s (%s) VALUES (%s)',
+					self::$stmt['table'], $keys, $vals);
+				self::clear();
+				break;
+
+			// UPDATE ifadesi hazırlar
+			case 'UPDATE':
+				$colVal = null;
+				foreach (self::$stmt['dataArr'] as $k => $v) {
+					$colVal .= self::hasMark($v) ? "{$k}={$v}, " : "{$k}='{$v}', ";
+				}
+				$colVal = trim(trim($colVal), ',');
+				$q = sprintf('UPDATE %s SET %s %s',
+					self::$stmt['table'], $colVal, self::$stmt['where']);
+				break;
+
+			// DELETE ifadesi hazırlar
+			case 'DELETE':
+				$q = sprintf('DELETE FROM %s %s',
+					self::$stmt['table'], self::$stmt['where']);
+				self::clear();
+				break;
+		}
+		return self::$stmt['query'] = $q;
 	}
 
 	/**
-	 * ID'ye göre veri döndürür
-	 * @param int $id
-	 * @return array
+	 * @param array $params
+	 * @return void
 	 */
-	public function find($id, $col = 'id')
+	public static function execute(array $params = [])
 	{
-		$this->where($col, '=', '?');
-		$this->bindParam([$id]);
-		return $this->fetch();
+		self::hasPdo();
+		self::param($params);
+		$params = self::$stmt['params'];
+		$statement = self::$pdo->prepare(self::build());
+		$statement->execute($params);
+		return $statement;
 	}
 
 	/**
-	 * Şarta göre veri döndürür
+	 * @param string $query
+	 * @return void
+	 */
+	public static function query($query)
+	{
+		self::hasPdo();
+		$statement = self::$pdo->prepare($query);
+		$args = array_slice(func_get_args(), 1);
+		if (isset($args[0]) && is_array($args[0])) {
+			$statement->execute($args[0]);
+		} else {
+			$statement->execute($args);
+		}
+		return $statement;
+	}
+
+	/**
+	 * @param integer $id
+	 * @param string $field
+	 * @return void
+	 */
+	public static function find($id = null, $field = 'id')
+	{
+		if (!is_null($id)) {
+			self::where("{$field}=:{$field}");
+			self::param(":{$field}", $id);
+		}
+		return self::execute()->fetch();
+	}
+
+	/**
 	 * @param string $col
 	 * @param mixed $val
-	 * @return array
+	 * @return void
 	 */
-	public function findAll($col = null, $val = null)
+	public static function findAll($col = null, $val = null)
 	{
 		if (is_array($col)) {
 			$arr = [];
-
 			$keys = array_keys($col);
 			$vals = array_values($col);
-
 			foreach ($vals as $key => $value) {
 				if ($key === 0) {
-					$this->where($keys[$key], '=', '?');
+					self::where($keys[$key] . '=' . '?');
 				} else {
-					$this->andWhere($keys[$key], '=', '?');
+					self::where($keys[$key] . '=' . '?');
 				}
 			}
-			$this->bindParam($vals);
+			self::param($vals);
 		} else {
 			if (!is_null($col)) {
-				$this->where($col, '=', '?');
-				$this->bindParam([$val]);
+				self::where($col . '=' . '?');
+				self::param([$val]);
 			}
 		}
-		return $this->fetchAll();
+		return self::execute()->fetchAll();
 	}
 
 	/**
-	 * Değerin hazırlanmış sorgu öğesi olup olmadığını sorar
-	 * @param $sth
-	 * @return bool
+	 * @return void
 	 */
-	private function isPrepared($sth)
+	public static function pdo()
 	{
-		if (substr($sth, 0, 1) == ':') {
-			return true;
-		} elseif ($sth == '?') {
-			return true;
-		} elseif (substr($sth, -1) == ')' && strpos($sth, '(') !== false) {
-			return true;
-		} else {
-			return false;
-		}
+		self::hasPdo();
+		return self::$pdo;
 	}
 
 	/**
-	 * Oluşturulan sorguyu temizler
+	 * @return string
 	 */
-	private function clear()
+	public static function getQuery()
 	{
-		$this->query = [
+		return self::$stmt['query'];
+	}
+
+	/**
+	 * Sorguyu sıfırlar
+	 */
+	private static function clear()
+	{
+		self::$stmt = [
 			'select' => null,
 			'from' => null,
-			'where' => [],
-			'where_string' => null,
-			'join' => [],
-			'join_string' => null,
+			'where' => null,
+			'whereArr' => [],
+			'having' => null,
+			'havingArr' => [],
+			'join' => null,
+			'joinArr' => [],
 			'orderBy' => null,
 			'groupBy' => null,
-			'having' => [],
-			'having_string' => null,
-			'table' => null,
-			'query' => null,
-			'old_query' => null,
 			'limit' => null,
-			'params' => [],
-			'data' => [],
-			'type' => 'SELECT'
+			'table' => null,
+			'type' => 'SELECT',
+			'params' => []
 		];
-
 	}
 
 	/**
-	 * Parametre oluşturur
-	 * @param $key
-	 * @param null $value
-	 * @return $this
+	 * PDO bağlantısı hazır mı
 	 */
-	public function bindParam($key, $value = null)
+	private static function hasPdo()
 	{
-		if (is_array($key)) {
-			foreach ($key as $k => $v) {
-				$this->query['params'] = array_merge($this->query['params'], [$k => $v]);
-			}
-		} else {
-			$this->query['params'] = array_merge($this->query['params'], [$key => $value]);
+		if (!self::$pdo instanceof \PDO) {
+			throw new \Exception('PDO bağlantısı yapılmamış');
 		}
-		return $this;
 	}
 
 	/**
-	 * Sorguyu çalıştırır
-	 * @return bool|void
+	 * @param mixed $val
+	 * @return bool
 	 */
-	public function execute($q = null, array $p = [])
+	private static function hasMark($val)
 	{
-		if ($q === null) {
-			$params = $this->query['params'];
-			$query = $this->build();
-	
-			if (!is_null($query)) {
-				$sth = $this->db->prepare($query);
-				return $sth->execute($params);
-			} else {
-				return false;
-			}
-		} else {
-			$sth = $this->db->prepare($q);
-			return $sth->execute($p);
-		}
-
-	}
-
-	/**
-	 * Oluşturulmuş sorguyu döndürür
-	 * @return string
-	 */
-	public function getQuery()
-	{
-		return trim($this->query['old_query']);
-	}
-
-	/**
-	 * Hazırlanmış ifadeleri sorgu haline getirir
-	 * @return string
-	 */
-	public function build()
-	{
-		$query = null;
-
-		switch ($this->query['type']) {
-			/**
-			 * Select sorgusu hazırlar
-			 */
-			case 'SELECT':
-				$query = sprintf('%s %s %s %s %s %s %s %s',
-					$this->query['select'],
-					$this->query['from'],
-					$this->query['join_string'],
-					$this->query['where_string'],
-					$this->query['having_string'],
-					$this->query['groupBy'],
-					$this->query['orderBy'],
-					$this->query['limit']
-				);
-				break;
-
-			/**
-			 * Insert sorgusu hazırlar
-			 */
-			case 'INSERT':
-				$keys = implode(', ', array_keys($this->query['data']));
-				$vals = null;
-
-				foreach (array_values($this->query['data']) as $val) {
-					if (is_numeric($val) ||$val == '?' ||substr($val, 0,1) == ':') {
-						$vals .= "$val, ";
-					} else {
-						$vals .= "'$val', ";
-					}
-				}
-
-				$vals = trim($vals);
-				$vals = substr($vals, 0, -1);
-
-				$query = sprintf('INSERT INTO %s (%s) VALUES (%s)',
-					$this->query['table'],
-					$keys,
-					$vals
-				);
-				break;
-
-			/**
-			 * Update sorgusu hazırlar
-			 */
-			case 'UPDATE':
-				$kvStr = null;
-
-				foreach ($this->query['data'] as $k => $v) {
-					if (is_numeric($v) ||$v == '?' ||substr($v, 0, 1) == ':') {
-						$kvStr .= "{$k} = {$v}, ";
-					} else {
-						$kvStr .= "{$k} = '{$v}', ";
-					}
-				}
-
-				$kvStr = trim($kvStr);
-				$kvStr = substr($kvStr, 0, -1);
-
-				$query = sprintf('UPDATE %s SET %s %s',
-					$this->query['table'],
-					$kvStr,
-					$this->query['where_string']
-				);
-				break;
-
-			/**
-			 * Delete sorgusu hazırlar
-			 */
-			case 'DELETE':
-				$query = sprintf('DELETE FROM %s %s',
-					$this->query['table'],
-					$this->query['where_string']
-				);
-				break;
-		}
-
-		$this->query['query'] = $query;
-		$this->clear();
-		$this->query['old_query'] = $query;
-		return trim($query);
+		return (is_numeric($val) ||$val == '?' ||substr($val, 0,1) == ':');
 	}
 }
