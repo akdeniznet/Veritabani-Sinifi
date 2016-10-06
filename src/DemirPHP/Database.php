@@ -101,13 +101,18 @@ class Database
 	 * @param array $arr
 	 * @return string
 	 */
-	public static function in(array $arr)
+	public static function in($arr)
 	{
-		$string = null;
-		foreach ($arr as $key => $data) {
-			$string .= self::hasMark($data) ? "{$data}, " : "'{$data}', ";
+		if (is_array($arr)) {
+			$string = null;
+			foreach ($arr as $key => $data) {
+				$string .= self::hasMark($data) ? "{$data}, " : "'{$data}', ";
+			}
+			return ' IN ('.trim(trim($string), ',').')';
+		} else {
+			return $arr;
 		}
-		return ' IN ('.trim(trim($string), ',').')';
+
 	}
 
 	/**
@@ -445,7 +450,8 @@ class Database
 				'limit' => null,
 				'table' => null,
 				'type' => 'SELECT',
-				'params' => []
+				'params' => [],
+				'clear' => TRUE
 			];
 		}
 	}
