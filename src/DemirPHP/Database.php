@@ -23,7 +23,8 @@ class Database
 		'table' => null,
 		'type' => 'SELECT',
 		'params' => [],
-		'query' => null
+		'query' => null,
+		'clear' => TRUE
 	];
 
 	/**
@@ -408,26 +409,45 @@ class Database
 	}
 
 	/**
+	 * @return string
+	 */
+	public static function getParams()
+	{
+		return self::$stmt['params'];
+	}
+
+	/**
+	 * @return string
+	 */
+	public static function notClear()
+	{
+		self::$stmt['clear'] = FALSE;
+		return new self;
+	}
+
+	/**
 	 * Sorguyu sıfırlar
 	 */
 	private static function clear()
 	{
-		self::$stmt = [
-			'select' => null,
-			'from' => null,
-			'where' => null,
-			'whereArr' => [],
-			'having' => null,
-			'havingArr' => [],
-			'join' => null,
-			'joinArr' => [],
-			'orderBy' => null,
-			'groupBy' => null,
-			'limit' => null,
-			'table' => null,
-			'type' => 'SELECT',
-			'params' => []
-		];
+		if (self::$stmt['clear'] === TRUE) {
+			self::$stmt = [
+				'select' => null,
+				'from' => null,
+				'where' => null,
+				'whereArr' => [],
+				'having' => null,
+				'havingArr' => [],
+				'join' => null,
+				'joinArr' => [],
+				'orderBy' => null,
+				'groupBy' => null,
+				'limit' => null,
+				'table' => null,
+				'type' => 'SELECT',
+				'params' => []
+			];
+		}
 	}
 
 	/**
