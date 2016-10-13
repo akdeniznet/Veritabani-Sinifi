@@ -424,9 +424,9 @@ class Database
 	/**
 	 * @return string
 	 */
-	public static function notClear()
+	public static function notClear($clear = FALSE)
 	{
-		self::$stmt['clear'] = FALSE;
+		self::$stmt['clear'] = $clear;
 		return new self;
 	}
 
