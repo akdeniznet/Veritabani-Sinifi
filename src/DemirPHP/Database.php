@@ -9,21 +9,21 @@ class Database
 	 * Sorgu ifadelerini tutar
 	 */
 	private static $stmt = [
-		'select' => null,
-		'from' => null,
-		'where' => null,
+		'select' => NULL,
+		'from' => NULL,
+		'where' => NULL,
 		'whereArr' => [],
-		'having' => null,
+		'having' => NULL,
 		'havingArr' => [],
-		'join' => null,
+		'join' => NULL,
 		'joinArr' => [],
-		'orderBy' => null,
-		'groupBy' => null,
-		'limit' => null,
-		'table' => null,
+		'orderBy' => NULL,
+		'groupBy' => NULL,
+		'limit' => NULL,
+		'table' => NULL,
 		'type' => 'SELECT',
 		'params' => [],
-		'query' => null,
+		'query' => NULL,
 		'clear' => TRUE
 	];
 
@@ -67,9 +67,9 @@ class Database
 	 * @param string $from
 	 * @return void
 	 */
-	public static function table($from)
+	public static function table($from, $select = '*')
 	{
-		return self::select()->from($from);
+		return self::select($select)->from($from);
 	}
 
 	/**
@@ -82,6 +82,14 @@ class Database
 		self::buildWhere();
 		return new self;
 	}
+
+	/**
+	 * @return boolean
+	 */
+	public static function hasWhere($has = 'AND ', $empty = NULL)
+ 	{
+ 		return !empty(self::$stmt['whereArr']) ? $has : $empty;
+ 	}
 
 	/**
 	 * WHERE ifadesi oluşturur
@@ -104,7 +112,7 @@ class Database
 	public static function in($arr)
 	{
 		if (is_array($arr)) {
-			$string = null;
+			$string = NULL;
 			foreach ($arr as $key => $data) {
 				$string .= self::hasMark($data) ? "{$data}, " : "'{$data}', ";
 			}
@@ -112,7 +120,6 @@ class Database
 		} else {
 			return $arr;
 		}
-
 	}
 
 	/**
@@ -138,6 +145,14 @@ class Database
 		self::buildHaving();
 		return new self;
 	}
+
+	/**
+	 * @return boolean
+	 */
+	public static function hasHaving($has = 'AND ', $empty = NULL)
+ 	{
+ 		return !empty(self::$stmt['havingArr']) ? $has : $empty;
+ 	}
 
 	/**
 	 * HAVING ifadesi oluşturur
@@ -286,7 +301,7 @@ class Database
 					self::$stmt['orderBy'],
 					self::$stmt['limit']
 				);
-				self::clear();
+				if (self::$stmt['clear']) self::clear();
 				break;
 
 			// INSERT ifadesi hazırlar
@@ -299,7 +314,7 @@ class Database
 				$vals = trim(trim($vals), ',');
 				$q = sprintf('INSERT INTO %s (%s) VALUES (%s)',
 					self::$stmt['table'], $keys, $vals);
-				self::clear();
+				if (self::$stmt['clear']) self::clear();
 				break;
 
 			// UPDATE ifadesi hazırlar
@@ -317,7 +332,7 @@ class Database
 			case 'DELETE':
 				$q = sprintf('DELETE FROM %s %s',
 					self::$stmt['table'], self::$stmt['where']);
-				self::clear();
+				if (self::$stmt['clear']) self::clear();
 				break;
 		}
 		return self::$stmt['query'] = $q;
@@ -424,9 +439,9 @@ class Database
 	/**
 	 * @return string
 	 */
-	public static function notClear($clear = FALSE)
+	public static function notClear()
 	{
-		self::$stmt['clear'] = $clear;
+		self::$stmt['clear'] = FALSE;
 		return new self;
 	}
 
@@ -435,25 +450,23 @@ class Database
 	 */
 	private static function clear()
 	{
-		if (self::$stmt['clear'] === TRUE) {
 			self::$stmt = [
-				'select' => null,
-				'from' => null,
-				'where' => null,
+				'select' => NULL,
+				'from' => NULL,
+				'where' => NULL,
 				'whereArr' => [],
-				'having' => null,
+				'having' => NULL,
 				'havingArr' => [],
-				'join' => null,
+				'join' => NULL,
 				'joinArr' => [],
-				'orderBy' => null,
-				'groupBy' => null,
-				'limit' => null,
-				'table' => null,
+				'orderBy' => NULL,
+				'groupBy' => NULL,
+				'limit' => NULL,
+				'table' => NULL,
 				'type' => 'SELECT',
 				'params' => [],
 				'clear' => TRUE
 			];
-		}
 	}
 
 	/**
