@@ -318,3 +318,43 @@ Database::table('post')
 	->param(':id', 5)
 	->execute();
 ```
+
+## Diğer Metodlar
+Kullanabileceğimiz diğer metodlar
+### `pdo()` metodu
+Bu metod PDO nesnesini döndürür.  Örneğin:
+```php
+Database::table(...)->insert(...)->execute();
+Database::pdo()->lastInsertId(); // Son eklenen ID 
+```
+### `query()` metodu
+SQL sorgusu çalıştırmaya yarar, ikinci ve diğer değerler parametreleri ifade eder.
+```php
+Database::query('SELECT * FROM post WHERE id=? AND draft=?', $id, 'published')->fetchAll();
+// ya da
+Database::query('SELECT * FROM post WHERE id=:id AND draft=:draft', [
+	':id' => 5,
+	':draft' => 'published'
+])->fetchAll();
+```
+### `notClear()` metodu
+Normal şartlarda sınıf, içerisinde ürettiği SQL kodunu, bir sonraki SQL kodunda temizler. Bu metodu kullandığımızda ise, SQL kodu sınıf içerisinden silinmez ve tekrar kullanılabilir. Örnekleyim:
+```php
+Database::notClear();
+$result = Database::table('post')->findAll();
+Database::getQuery(); // SELECT * FROM post
+Database::execute()->rowCount(); // Gönderi sayısı döner
+```
+### `getQuery()` metodu
+Son çalıştırılan sorguyu döndürür.
+```php
+Database::table('post')->findAll();
+Database::getQuery(); // SELECT * FROM post
+```
+### `getParams()` metodu
+Son çalıştırılan sorguya ait parametreleri `notClear()`  metodu çalıştırılmışsa döndürür. Örnek:
+```php
+Database::notClear();
+Database::table('post')->find(12);
+Database::getParams(); // array ( ':id' => 12 )
+```
