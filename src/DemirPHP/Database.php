@@ -450,23 +450,23 @@ class Database
 	 */
 	private static function clear()
 	{
-			self::$stmt = [
-				'select' => NULL,
-				'from' => NULL,
-				'where' => NULL,
-				'whereArr' => [],
-				'having' => NULL,
-				'havingArr' => [],
-				'join' => NULL,
-				'joinArr' => [],
-				'orderBy' => NULL,
-				'groupBy' => NULL,
-				'limit' => NULL,
-				'table' => NULL,
-				'type' => 'SELECT',
-				'params' => [],
-				'clear' => TRUE
-			];
+		self::$stmt = [
+			'select' => NULL,
+			'from' => NULL,
+			'where' => NULL,
+			'whereArr' => [],
+			'having' => NULL,
+			'havingArr' => [],
+			'join' => NULL,
+			'joinArr' => [],
+			'orderBy' => NULL,
+			'groupBy' => NULL,
+			'limit' => NULL,
+			'table' => NULL,
+			'type' => 'SELECT',
+			'params' => [],
+			'clear' => TRUE
+		];
 	}
 
 	/**
