@@ -76,9 +76,10 @@ class Database
 	 * @param string $where
 	 * @return void
 	 */
-	public static function where($where)
+	public static function where($where, $param = NULL)
 	{
 		self::$stmt['whereArr'][] = $where;
+		if (!is_null($param) && is_array($param)) self::param($param);
 		self::buildWhere();
 		return new self;
 	}
@@ -139,9 +140,10 @@ class Database
 	 * @param string $having
 	 * @return void
 	 */
-	public static function having($having)
+	public static function having($having, $param = NULL)
 	{
 		self::$stmt['havingArr'][] = $having;
+		if (!is_null($param) && is_array($param)) self::param($param);
 		self::buildHaving();
 		return new self;
 	}
@@ -254,9 +256,18 @@ class Database
 	 * @param array $data
 	 * @return void
 	 */
-	public static function insert(array $data)
+	public static function insert()
 	{
-		self::$stmt['dataArr'] = $data;
+		if (func_num_args() === 1) {
+			$data = func_get_arg(0);
+			self::$stmt['dataArr'] = $data;
+		} elseif (func_num_args() === 2) {
+			$table = func_get_arg(0);
+			$data = func_get_arg(1);
+			self::table($table);
+			self::$stmt['dataArr'] = $data;
+		}
+		
 		self::$stmt['type'] = 'INSERT';
 		return new self;
 	}
@@ -265,9 +276,18 @@ class Database
 	 * @param array $data
 	 * @return void
 	 */
-	public static function update(array $data)
+	public static function update()
 	{
-		self::$stmt['dataArr'] = $data;
+		if (func_num_args() === 1) {
+			$data = func_get_arg(0);
+			self::$stmt['dataArr'] = $data;
+		} elseif (func_num_args() === 2) {
+			$table = func_get_arg(0);
+			$data = func_get_arg(1);
+			self::table($table);
+			self::$stmt['dataArr'] = $data;
+		}
+		
 		self::$stmt['type'] = 'UPDATE';
 		return new self;
 	}
@@ -277,6 +297,17 @@ class Database
 	 */
 	public static function delete()
 	{
+		if (func_num_args() === 1) {
+			$table = func_get_arg(0);
+			self::table($table);
+		} elseif (func_num_args() === 2) {
+			$table = func_get_arg(0);
+			$id = func_get_arg(1);
+			self::table($table)
+				->where('id=:id')
+				->param(':id', $id);
+		}
+		
 		self::$stmt['type'] = 'DELETE';
 		return new self;
 	}
