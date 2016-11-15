@@ -177,16 +177,17 @@ Parametreler birden fazla `bindParam` metodu çalıştırılarak eklenebilir, ö
 ## `WHERE` İfadeleri
 `WHERE` ifadesi ile koşullu sorgular oluşturabiliyoruz.
 
-`where()` `orWhere()` `andWhere()` 
-`whereIn()` `orWhereIn()` `andWhereIn()`
-`whereBetween()` `orWhereBetween()` `andWhereBetween()`
-
 ```php
 Database::table('table')
-	->where('type="post"')
-	->where('AND approved="yes"')
+	->where("type='post'")
+	->where("AND approved='yes'")
 	->build();
 // "SELECT * FROM table WHERE type = 'post' AND approved = 'yes'" ifadesini döndürür
+// ya da
+Database::table('table')
+	->where('type=?', ['post'])
+	->where('AND approved=?', ['yes'])
+	->execute();
 
 Database::table('table')
 	->where('draft=1')
@@ -212,14 +213,14 @@ Bir sorguda iki tablodan veri elde etmek için kullanılır.
 ```php
 Database::select('post.*, category.name AS cat_name, category.id AS cat_id')
 	->from('post')
-	->join('category NON post.category_id=category.id')
+	->join('category ON post.category_id=category.id')
 	->build();
 
 // "SELECT post.*, category.name AS cat_name, category.id AS cat_id FROM post INNER JOIN category ON post.category_id = category.id" döndürür
 // veya
 Database::select()
 	->from('post AS p')
-	->rightJoin('category AS c ON c.id=p.cid')
+	->join('category AS c ON c.id=p.cid', 'right')
 	->build();
 ```
 
@@ -247,10 +248,14 @@ Database::table('table')
 `having()` `orHaving()` `andHaving()` 
 ```php
 Database::table('post')
-	->having('approved="yes"')
+	->having("approved='yes'")
 	->having('AND ...')
 	->having('OR ...')
 	->build();
+// veya
+Database::table('post')
+	->having('approved=?', ['yes'])
+	->execute();
 ```
 
 ## `LIMIT` İfadesi
@@ -280,6 +285,9 @@ Database::table('post')
 	->insert($post)
 	->execute();
 // execute() methodu hazırlanan veriyi ekler
+
+// veya
+Database::insert('post', $post)->execute();
 ```
 
 Sorguyu çalıştırdıktan sonra, son eklenen verinin ID'sini şöyle alabiliriz
@@ -300,6 +308,10 @@ Database::table('post')
 	->update($post)
 	->where('id=5')
 	->execute();
+// veya
+Database::update('post', $post)
+	->where('id=?', [5])
+	->execute();
 ```
 
 ## `DELETE FROM` İfadesi
@@ -309,13 +321,11 @@ Database::table('post')
 	->where('id=5')
 	->execute();
 // veya
-Database::table('post')
-	->delete('id=5')
+Database::delete('post', 5)
 	->execute();
 // veya
-Database::table('post')
-	->delete('id=:id')
-	->param(':id', 5)
+Database::delete('post')
+	->where('id=?', [$id])
 	->execute();
 ```
 
