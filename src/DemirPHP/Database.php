@@ -479,7 +479,7 @@ class Database
 	/**
 	 * Sorguyu sıfırlar
 	 */
-	private static function clear()
+	public static function clear()
 	{
 		self::$stmt = [
 			'select' => NULL,
