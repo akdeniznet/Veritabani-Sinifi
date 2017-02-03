@@ -6,120 +6,135 @@ class Database
 {
 	/**
 	 * @var array
-	 * Sorgu ifadelerini tutar
 	 */
-	private static $stmt = [
-		'select' => NULL,
-		'from' => NULL,
-		'where' => NULL,
-		'whereArr' => [],
-		'having' => NULL,
-		'havingArr' => [],
-		'join' => NULL,
-		'joinArr' => [],
-		'orderBy' => NULL,
-		'groupBy' => NULL,
-		'limit' => NULL,
-		'table' => NULL,
-		'type' => 'SELECT',
-		'params' => [],
-		'query' => NULL,
-		'clear' => TRUE
+	protected $stmt = [
+		'select' => null,
+		'from' => null,
+		'where' => null,
+		'having' => null,
+		'join' => null,
+		'orderBy' => null,
+		'groupBy' => null,
+		'limit' => null,
 	];
 
 	/**
-	 * @var \PDO
+	 * @var array
 	 */
-	private static $pdo;
+	protected $arr = [
+		'where' => [],
+		'having' => [],
+		'join' => [],
+		'params' => [],
+		'data' => [],
+	];
 
 	/**
-	 * PDO objesini alır
-	 * @param void $pdo
-	 * @return void
+	 * @var string
 	 */
-	public static function init(\PDO $pdo)
+	protected $query = null;
+
+	/**
+	 * @var string
+	 */
+	protected $type = 'SELECT';
+
+	/**
+	 * @var string
+	 */
+	protected $table = null;
+
+	/**
+	 * @var PDO
+	 */
+	protected static $pdo;
+
+	/**
+	 * @param PDO $pdo
+	 * @return void
+	 */
+	public static function init($pdo)
 	{
-		return self::$pdo = $pdo;
+		self::$pdo = $pdo;
 	}
 
 	/**
 	 * @param string $select
 	 * @return void
 	 */
-	public static function select($select = '*')
+	public function select($select = '*')
 	{
-		self::$stmt['select'] = "SELECT {$select}";
-		return new self;
+		$this->stmt['select'] = "SELECT {$select}";
+		return $this;
 	}
 
 	/**
 	 * @param string $from
 	 * @return void
 	 */
-	public static function from($from)
+	public function from($from)
 	{
-		self::$stmt['from'] = "FROM {$from}";
-		self::$stmt['table'] = $from;
-		return new self;
+		$this->stmt['from'] = "FROM {$from}";
+		// Birden fazla tablo tanımlandıysa, ilkini tablo olarak belirler
+		$tables = explode(',', $from);
+		$this->table = $tables[0];
+		return $this;
 	}
 
 	/**
 	 * @param string $from
+	 * @param string $select
 	 * @return void
 	 */
-	public static function table($from, $select = '*')
+	public function table($from, $select = '*')
 	{
-		return self::select($select)->from($from);
+		return $this->select($select)->from($from);
 	}
 
 	/**
 	 * @param string $where
+	 * @param mixed $params
 	 * @return void
 	 */
-	public static function where($where, $param = NULL)
+	public function where($where, $param = NULL)
 	{
-		self::$stmt['whereArr'][] = $where;
-		if (!is_null($param) && is_array($param)) self::param($param);
-		self::buildWhere();
-		return new self;
-	}
+		$this->arr['where'][] = $where;
 
-	/**
-	 * @return boolean
-	 */
-	public static function hasWhere($has = 'AND ', $empty = NULL)
- 	{
- 		return !empty(self::$stmt['whereArr']) ? $has : $empty;
- 	}
-
-	/**
-	 * WHERE ifadesi oluşturur
-	 */
-	private static function buildWhere()
-	{
-		$string = 'WHERE ';
-		if (isset(self::$stmt['whereArr']) && is_array(self::$stmt['whereArr'])) {
-			foreach (self::$stmt['whereArr'] as $key => $value) {
-				$string .= "{$value} ";
+		if (!is_null($param)) {
+			if (is_array($param)) {
+				$this->param($param);
+			} else {
+				$this->param([$param]);
 			}
 		}
-		self::$stmt['where'] = trim($string);
+
+		$this->buildWhere();
+		return $this;
 	}
 
 	/**
+	 * @param string $has
+	 * @return boolean
+	 */
+	public function hasWhere($has = 'AND')
+ 	{
+ 		return !empty($this->arr['where']) ? "{$has} " : null;
+ 	}
+
+ 	/**
 	 * @param array $arr
 	 * @return string
 	 */
-	public static function in($arr)
+	public function in($arr)
 	{
 		if (is_array($arr)) {
-			$string = NULL;
+			$string = null;
 			foreach ($arr as $key => $data) {
-				$string .= self::hasMark($data) ? "{$data}, " : "'{$data}', ";
+				$string .= $this->hasMark($data) ? "{$data}, " : "'{$data}', ";
 			}
 			return ' IN ('.trim(trim($string), ',').')';
 		} else {
-			return $arr;
+			return " IN ({$arr})";
 		}
 	}
 
@@ -128,101 +143,131 @@ class Database
 	 * @param mixed $val2
 	 * @return string
 	 */
-	public static function between($val1, $val2)
+	public function between($val1, $val2)
 	{
-		return ' BETWEEN ' .
-			(self::hasMark($val1) ? "{$val1}" : "'{$val1}'") .
-			' AND ' .
-			(self::hasMark($val2) ? "{$val2}" : "'{$val2}'");
+		return sprintf(' BETWEEN %s AND %s',
+			$this->hasMark($val1) ? "{$val1}" : "'{$val1}'",
+			$this->hasMark($val2) ? "{$val2}" : "'{$val2}'"
+		);
+	}
+
+ 	/**
+	 * WHERE ifadesi oluşturur
+	 */
+	private function buildWhere()
+	{
+		$string = 'WHERE ';
+		if (isset($this->arr['where']) && is_array($this->arr['where'])) {
+			foreach ($this->arr['where'] as $key => $value) {
+				$string .= "{$value} ";
+			}
+		}
+		$this->stmt['where'] = trim($string);
 	}
 
 	/**
 	 * @param string $having
+	 * @param mixed $param
 	 * @return void
 	 */
-	public static function having($having, $param = NULL)
+	public function having($having, $param = NULL)
 	{
-		self::$stmt['havingArr'][] = $having;
-		if (!is_null($param) && is_array($param)) self::param($param);
-		self::buildHaving();
-		return new self;
+		$this->arr['having'][] = $having;
+
+		if (!is_null($param)) {
+			if (is_array($param)) {
+				$this->param($param);
+			} else {
+				$this->param([$param]);
+			}
+		}
+
+		$this->buildHaving();
+		return $this;
 	}
 
 	/**
+	 * @param string $has
 	 * @return boolean
 	 */
-	public static function hasHaving($has = 'AND ', $empty = NULL)
+	public function hasHaving($has = 'AND')
  	{
- 		return !empty(self::$stmt['havingArr']) ? $has : $empty;
+ 		return !empty($this->arr['having']) ? "{$has} " : null;
  	}
 
 	/**
 	 * HAVING ifadesi oluşturur
 	 */
-	private static function buildHaving()
+	private function buildHaving()
 	{
 		$string = 'HAVING ';
-		if (isset(self::$stmt['havingArr']) && is_array(self::$stmt['havingArr'])) {
-			foreach (self::$stmt['havingArr'] as $key => $value) {
+		if (isset($this->arr['having']) && is_array($this->arr['having'])) {
+			foreach ($this->arr['having'] as $key => $value) {
 				$string .= "{$value} ";
 			}
 		}
-		self::$stmt['having'] = trim($string);
+		$this->stmt['having'] = trim($string);
 	}
 
 	/**
 	 * @param string $join
+	 * @param string $type
 	 * @return void
 	 */
-	public static function join($join, $type = 'INNER')
+	public function join($join, $type = 'INNER')
 	{
-		self::$stmt['joinArr'][] = $type . ' JOIN ' . $join;
-		self::buildJoin();
-		return new self;
+		$this->arr['join'][] = $type . ' JOIN ' . $join;
+		$this->buildJoin();
+		return $this;
 	}
 
 	/**
 	 * JOIN ifadesi oluşturur
 	 */
-	private static function buildJoin()
+	private function buildJoin()
 	{
 		$string = null;
-		if (isset(self::$stmt['joinArr']) && is_array(self::$stmt['joinArr'])) {
-			foreach (self::$stmt['joinArr'] as $key => $value) {
+		if (isset($this->arr['join']) && is_array($this->arr['join'])) {
+			foreach ($this->arr['join'] as $key => $value) {
 				$string .= "{$value} ";
 			}
 		}
-		self::$stmt['join'] = trim($string);
+		$this->stmt['join'] = trim($string);
 	}
 
 	/**
 	 * @param string $orderBy
 	 * @return void
 	 */
-	public static function orderBy($orderBy)
+	public function orderBy($orderBy)
 	{
-		self::$stmt['orderBy'] = "ORDER BY {$orderBy}";
-		return new self;
+		$this->stmt['orderBy'] = "ORDER BY {$orderBy}";
+		return $this;
 	}
 
 	/**
 	 * @param string $groupBy
 	 * @return void
 	 */
-	public static function groupBy($groupBy)
+	public function groupBy($groupBy)
 	{
-		self::$stmt['groupBy'] = "GROUP BY {$groupBy}";
-		return new self;
+		$this->stmt['groupBy'] = "GROUP BY {$groupBy}";
+		return $this;
 	}
 
 	/**
-	 * @param string $limit
+	 * @param mixed $limit
+	 * @param mixed $offset
 	 * @return void
 	 */
-	public static function limit($limit)
+	public function limit($limit, $offset = null)
 	{
-		self::$stmt['limit'] = "LIMIT $limit";
-		return new self;
+		if (is_null($offset)) {
+			$this->stmt['limit'] = "LIMIT $limit";
+		} else {
+			$this->stmt['limit'] = "LIMIT {$limit}, {$offset}";
+		} 
+		return $this;
 	}
 
 	/**
@@ -230,16 +275,16 @@ class Database
 	 * @param string|null $value
 	 * @return void
 	 */
-	public static function param($name, $value = null)
+	public function param($name, $value = null)
 	{
 		if (is_array($name)) {
 			foreach ($name as $k => $v) {
-				self::$stmt['params'] = array_merge(self::$stmt['params'], [$k => $v]);
+				$this->arr['params'] = array_merge($this->arr['params'], [$k => $v]);
 			}
 		} else {
-			self::$stmt['params'] = array_merge(self::$stmt['params'], [$name => $value]);
+			$this->arr['params'] = array_merge($this->arr['params'], [$name => $value]);
 		}
-		return new self;
+		return $this;
 	}
 
 	/**
@@ -247,139 +292,133 @@ class Database
 	 * @param string|null $value
 	 * @return void
 	 */
-	public static function bindParam($name, $value = null)
+	public function bindParam($name, $value = null)
 	{
-		return self::param($name, $value);
+		return $this->param($name, $value);
 	}
 
 	/**
-	 * @param array $data
+	 * @param string|array $name
+	 * @param string|null $value
 	 * @return void
 	 */
-	public static function insert()
+	public function params($name, $value = null)
+	{
+		return $this->param($name, $value);
+	}
+
+	/**
+	 * @return void
+	 */
+	public function insert()
 	{
 		if (func_num_args() === 1) {
 			$data = func_get_arg(0);
-			self::$stmt['dataArr'] = $data;
+			$this->arr['data'] = $data;
 		} elseif (func_num_args() === 2) {
 			$table = func_get_arg(0);
 			$data = func_get_arg(1);
-			self::table($table);
-			self::$stmt['dataArr'] = $data;
+			$this->table($table);
+			$this->arr['data'] = $data;
 		}
 		
-		self::$stmt['type'] = 'INSERT';
-		return new self;
+		$this->type = 'INSERT';
+		return $this;
 	}
 
 	/**
-	 * @param array $data
 	 * @return void
 	 */
-	public static function update()
+	public function update()
 	{
 		if (func_num_args() === 1) {
 			$data = func_get_arg(0);
-			self::$stmt['dataArr'] = $data;
+			$this->arr['data'] = $data;
 		} elseif (func_num_args() === 2) {
 			$table = func_get_arg(0);
 			$data = func_get_arg(1);
-			self::table($table);
-			self::$stmt['dataArr'] = $data;
+			$this->table($table);
+			$this->arr['data'] = $data;
 		}
 		
-		self::$stmt['type'] = 'UPDATE';
-		return new self;
+		$this->type = 'UPDATE';
+		return $this;
 	}
 
 	/**
 	 * @return void
 	 */
-	public static function delete()
+	public function delete()
 	{
 		if (func_num_args() === 1) {
 			$table = func_get_arg(0);
-			self::table($table);
+			$this->table($table);
 		} elseif (func_num_args() === 2) {
 			$table = func_get_arg(0);
 			$id = func_get_arg(1);
-			self::table($table)
+			$this->table($table)
 				->where('id=:id')
 				->param(':id', $id);
 		}
 		
-		self::$stmt['type'] = 'DELETE';
-		return new self;
+		$this->type = 'DELETE';
+		return $this;
 	}
 
 	/**
-	 * @param string|null $query
 	 * @return void
 	 */
-	public static function build()
+	public function build()
 	{
-		$q = null;
-		switch(self::$stmt['type']) {
+		$query = null;
+		switch($this->type) {
 			// SELECT ifadesi hazırlar
 			case 'SELECT':
-				$q = sprintf("%s %s %s %s %s %s %s %s",
-					self::$stmt['select'],
-					self::$stmt['from'],
-					self::$stmt['join'],
-					self::$stmt['where'],
-					self::$stmt['having'],
-					self::$stmt['groupBy'],
-					self::$stmt['orderBy'],
-					self::$stmt['limit']
+				$query = sprintf("%s %s %s %s %s %s %s %s",
+					$this->stmt['select'],
+					$this->stmt['from'],
+					$this->stmt['join'],
+					$this->stmt['where'],
+					$this->stmt['having'],
+					$this->stmt['groupBy'],
+					$this->stmt['orderBy'],
+					$this->stmt['limit']
 				);
-				if (self::$stmt['clear']) self::clear();
 				break;
-
 			// INSERT ifadesi hazırlar
 			case 'INSERT':
-				$keys = implode(', ', array_keys(self::$stmt['dataArr']));
+				$keys = implode(', ', array_keys($this->arr['data']));
 				$vals = null;
-				foreach (array_values(self::$stmt['dataArr']) as $val) {
-					$vals .= self::hasMark($val) ? "$val, " : "'$val', ";
-				}
+				foreach (array_values($this->arr['data']) as $val) $vals .= $this->hasMark($val) ? "$val, " : "'$val', ";
 				$vals = trim(trim($vals), ',');
-				$q = sprintf('INSERT INTO %s (%s) VALUES (%s)',
-					self::$stmt['table'], $keys, $vals);
-				if (self::$stmt['clear']) self::clear();
+				$query = sprintf('INSERT INTO %s (%s) VALUES (%s)', $this->table, $keys, $vals);
 				break;
-
 			// UPDATE ifadesi hazırlar
 			case 'UPDATE':
 				$colVal = null;
-				foreach (self::$stmt['dataArr'] as $k => $v) {
-					$colVal .= self::hasMark($v) ? "{$k}={$v}, " : "{$k}='{$v}', ";
-				}
+				foreach ($this->arr['data'] as $k => $v) $colVal .= $this->hasMark($v) ? "{$k}={$v}, " : "{$k}='{$v}', ";
 				$colVal = trim(trim($colVal), ',');
-				$q = sprintf('UPDATE %s SET %s %s',
-					self::$stmt['table'], $colVal, self::$stmt['where']);
+				$query = sprintf('UPDATE %s SET %s %s', $this->table, $colVal, $this->stmt['where']);
 				break;
-
 			// DELETE ifadesi hazırlar
 			case 'DELETE':
-				$q = sprintf('DELETE FROM %s %s',
-					self::$stmt['table'], self::$stmt['where']);
-				if (self::$stmt['clear']) self::clear();
+				$query = sprintf('DELETE FROM %s %s', $this->table, $this->stmt['where']);
 				break;
 		}
-		return self::$stmt['query'] = $q;
+		return $this->query = $query;
 	}
 
 	/**
 	 * @param array $params
 	 * @return void
 	 */
-	public static function execute(array $params = [])
+	public function execute(array $params = [])
 	{
-		self::hasPdo();
-		self::param($params);
-		$params = self::$stmt['params'];
-		$statement = self::$pdo->prepare(self::build());
-		$statement->execute($params);
+		$this->hasPdo();
+		$this->param($params);
+		$statement = self::pdo()->prepare($this->build());
+		$statement->execute($this->arr['params']);
+		$this->clear();
 		return $statement;
 	}
 
@@ -387,10 +426,10 @@ class Database
 	 * @param string $query
 	 * @return void
 	 */
-	public static function query($query)
+	public function query($query)
 	{
-		self::hasPdo();
-		$statement = self::$pdo->prepare($query);
+		$this->hasPdo();
+		$statement = self::pdo()->prepare($query);
 		$args = array_slice(func_get_args(), 1);
 		if (isset($args[0]) && is_array($args[0])) {
 			$statement->execute($args[0]);
@@ -405,13 +444,12 @@ class Database
 	 * @param string $field
 	 * @return void
 	 */
-	public static function find($id = null, $field = 'id')
+	public function find($id = null, $field = 'id')
 	{
 		if (!is_null($id)) {
-			self::where("{$field}=:{$field}");
-			self::param(":{$field}", $id);
+			$this->where("{$field}=:{$field}", [":{$field}" => $id]);
 		}
-		return self::execute()->fetch();
+		return $this->execute()->fetch();
 	}
 
 	/**
@@ -419,7 +457,7 @@ class Database
 	 * @param mixed $val
 	 * @return void
 	 */
-	public static function findAll($col = null, $val = null)
+	public function findAll($col = null, $val = null)
 	{
 		if (is_array($col)) {
 			$arr = [];
@@ -427,19 +465,19 @@ class Database
 			$vals = array_values($col);
 			foreach ($vals as $key => $value) {
 				if ($key === 0) {
-					self::where($keys[$key] . '=' . '?');
+					$this->where($keys[$key] . '=?');
 				} else {
-					self::where($keys[$key] . '=' . '?');
+					$this->where($keys[$key] . '=?');
 				}
 			}
-			self::param($vals);
+			$this->param($vals);
 		} else {
 			if (!is_null($col)) {
-				self::where($col . '=' . '?');
-				self::param([$val]);
+				$this->where($col . '=?');
+				$this->param([$val]);
 			}
 		}
-		return self::execute()->fetchAll();
+		return $this->execute()->fetchAll();
 	}
 
 	/**
@@ -447,65 +485,81 @@ class Database
 	 */
 	public static function pdo()
 	{
-		self::hasPdo();
 		return self::$pdo;
 	}
 
 	/**
 	 * @return string
 	 */
-	public static function getQuery()
+	public function getQuery()
 	{
-		return self::$stmt['query'];
+		return $this->query;
 	}
 
 	/**
 	 * @return string
 	 */
-	public static function getParams()
+	public function getParams()
 	{
-		return self::$stmt['params'];
+		return $this->arr['params'];
 	}
 
 	/**
-	 * @return string
+	 * @return void
 	 */
-	public static function notClear()
+	public function clear()
 	{
-		self::$stmt['clear'] = FALSE;
-		return new self;
-	}
-
-	/**
-	 * Sorguyu sıfırlar
-	 */
-	public static function clear()
-	{
-		self::$stmt = [
-			'select' => NULL,
-			'from' => NULL,
-			'where' => NULL,
-			'whereArr' => [],
-			'having' => NULL,
-			'havingArr' => [],
-			'join' => NULL,
-			'joinArr' => [],
-			'orderBy' => NULL,
-			'groupBy' => NULL,
-			'limit' => NULL,
-			'table' => NULL,
-			'type' => 'SELECT',
-			'params' => [],
-			'clear' => TRUE
+		$this->stmt = [
+			'select' => null,
+			'from' => null,
+			'where' => null,
+			'having' => null,
+			'join' => null,
+			'orderBy' => null,
+			'groupBy' => null,
+			'limit' => null,
 		];
+
+		$this->arr = [
+			'where' => [],
+			'having' => [],
+			'join' => [],
+			'params' => [],
+			'data' => [],
+		];
+
+		$this->query = null;
+		$this->type = 'SELECT';
+		$this->table = null;
 	}
 
 	/**
-	 * PDO bağlantısı hazır mı
+	 * @return void
 	 */
-	private static function hasPdo()
+	public function copyQuery()
 	{
-		if (!self::$pdo instanceof \PDO) {
+		return [$this->stmt, $this->arr, $this->query, $this->type, $this->table];
+	}
+
+	/**
+	 * @return void
+	 */
+	public function putQuery(array $query)
+	{
+		if (count($query) === 5) {
+			list($this->stmt, $this->arr, $this->query, $this->type, $this->table) = $query;
+		} else {
+			throw new \Exception('Alınan veri doğrulanamadı');
+		}
+	}
+
+	/**
+	 * PDO bağlantısı hazırlanmış mı sorguılar
+	 * @return void
+	 */
+	private function hasPdo()
+	{
+		if (!self::pdo() instanceof \PDO) {
 			throw new \Exception('PDO bağlantısı yapılmamış');
 		}
 	}
@@ -514,7 +568,7 @@ class Database
 	 * @param mixed $val
 	 * @return bool
 	 */
-	private static function hasMark($val)
+	private function hasMark($val)
 	{
 		return (is_numeric($val) ||$val == '?' ||substr($val, 0,1) == ':');
 	}
